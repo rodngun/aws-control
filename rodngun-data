@@ -1,0 +1,860 @@
+#!/usr/bin/env python3
+"""
+RodNGun Data Management Script
+Fetches and updates regulation and boundary data for all states
+Stores data in PostgreSQL with BLOBs and updates MongoDB backup
+"""
+
+import os
+import sys
+import json
+import argparse
+import asyncio
+import hashlib
+import logging
+from datetime import datetime
+from typing import Dict, List, Optional, Tuple
+from pathlib import Path
+
+# Third-party imports
+import aiohttp
+import psycopg2
+from psycopg2.extras import Json, RealDictCursor
+import requests
+from bs4 import BeautifulSoup
+import geopandas as gpd
+from shapely import geometry
+import pymongo
+import subprocess
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Configuration
+SCRIPT_DIR = Path(__file__).parent
+PROJECT_DIR = SCRIPT_DIR.parent
+DB_CONFIG = {
+    'host': os.getenv('POSTGRES_HOST', 'localhost'),
+    'port': os.getenv('POSTGRES_PORT', 5432),
+    'database': os.getenv('POSTGRES_DB', 'rodngun_sources'),
+    'user': os.getenv('POSTGRES_USER', 'rodngun_user'),
+    'password': os.getenv('POSTGRES_PASSWORD', 'rodngun_pass')
+}
+
+# Load data sources configuration
+DATA_SOURCES_FILE = SCRIPT_DIR / 'database' / 'data_sources.json'
+with open(DATA_SOURCES_FILE, 'r') as f:
+    DATA_SOURCES = json.load(f)
+
+# State code mapping
+STATE_CODES = {
+    'alabama': 'AL', 'alaska': 'AK', 'arizona': 'AZ', 'arkansas': 'AR',
+    'california': 'CA', 'colorado': 'CO', 'connecticut': 'CT', 'delaware': 'DE',
+    'florida': 'FL', 'georgia': 'GA', 'hawaii': 'HI', 'idaho': 'ID',
+    'illinois': 'IL', 'indiana': 'IN', 'iowa': 'IA', 'kansas': 'KS',
+    'kentucky': 'KY', 'louisiana': 'LA', 'maine': 'ME', 'maryland': 'MD',
+    'massachusetts': 'MA', 'michigan': 'MI', 'minnesota': 'MN', 'mississippi': 'MS',
+    'missouri': 'MO', 'montana': 'MT', 'nebraska': 'NE', 'nevada': 'NV',
+    'new_hampshire': 'NH', 'new_jersey': 'NJ', 'new_mexico': 'NM', 'new_york': 'NY',
+    'north_carolina': 'NC', 'north_dakota': 'ND', 'ohio': 'OH', 'oklahoma': 'OK',
+    'oregon': 'OR', 'pennsylvania': 'PA', 'rhode_island': 'RI', 'south_carolina': 'SC',
+    'south_dakota': 'SD', 'tennessee': 'TN', 'texas': 'TX', 'utah': 'UT',
+    'vermont': 'VT', 'virginia': 'VA', 'washington': 'WA', 'west_virginia': 'WV',
+    'wisconsin': 'WI', 'wyoming': 'WY', 'district_of_columbia': 'DC'
+}
+
+
+class DatabaseManager:
+    """Manages PostgreSQL database connections and operations"""
+    
+    def __init__(self):
+        self.conn = None
+        self.cursor = None
+    
+    def connect(self):
+        """Establish database connection"""
+        try:
+            self.conn = psycopg2.connect(**DB_CONFIG)
+            self.cursor = self.conn.cursor(cursor_factory=RealDictCursor)
+            logger.info("Connected to PostgreSQL database")
+        except psycopg2.Error as e:
+            logger.error(f"Database connection failed: {e}")
+            sys.exit(1)
+    
+    def close(self):
+        """Close database connection"""
+        if self.cursor:
+            self.cursor.close()
+        if self.conn:
+            self.conn.close()
+    
+    def init_database(self):
+        """Initialize database with schema if needed"""
+        schema_file = SCRIPT_DIR / 'database' / 'init_postgres.sql'
+        if schema_file.exists():
+            with open(schema_file, 'r') as f:
+                schema_sql = f.read()
+            try:
+                self.cursor.execute(schema_sql)
+                self.conn.commit()
+                logger.info("Database schema initialized")
+            except psycopg2.Error as e:
+                logger.warning(f"Schema may already exist: {e}")
+                self.conn.rollback()
+    
+    def create_update_log(self, state_code: str, data_type: str) -> str:
+        """Create a new update log entry"""
+        sql = """
+        INSERT INTO update_logs (state_code, data_type, update_type, started_at, status)
+        VALUES (%s, %s, 'manual', NOW(), 'running')
+        RETURNING id
+        """
+        self.cursor.execute(sql, (state_code, data_type))
+        self.conn.commit()
+        return self.cursor.fetchone()['id']
+    
+    def update_log(self, log_id: str, **kwargs):
+        """Update an existing log entry"""
+        set_clauses = []
+        values = []
+        for key, value in kwargs.items():
+            set_clauses.append(f"{key} = %s")
+            values.append(value)
+        
+        sql = f"""
+        UPDATE update_logs 
+        SET {', '.join(set_clauses)}
+        WHERE id = %s
+        """
+        values.append(log_id)
+        self.cursor.execute(sql, values)
+        self.conn.commit()
+    
+    def store_regulation_data(self, state_code: str, data: Dict):
+        """Store regulation data with PDF as BLOB"""
+        # Calculate hash for deduplication
+        pdf_hash = hashlib.sha256(data.get('pdf_content', b'')).hexdigest()
+        
+        # Check if already exists
+        self.cursor.execute(
+            "SELECT id FROM regulation_data WHERE state_code = %s AND pdf_hash = %s",
+            (state_code, pdf_hash)
+        )
+        existing = self.cursor.fetchone()
+        
+        if existing:
+            logger.info(f"Regulation data already exists for {state_code}")
+            return existing['id']
+        
+        sql = """
+        INSERT INTO regulation_data (
+            state_code, regulation_year, regulation_type, 
+            web_url, pdf_url, pdf_document, pdf_size_mb, pdf_hash,
+            regulations_json, last_fetched, fetch_status
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), 'success')
+        RETURNING id
+        """
+        
+        pdf_size = len(data.get('pdf_content', b'')) / (1024 * 1024)  # Convert to MB
+        
+        self.cursor.execute(sql, (
+            state_code,
+            datetime.now().year,
+            'combined',
+            data.get('web_url'),
+            data.get('pdf_url'),
+            psycopg2.Binary(data.get('pdf_content', b'')),
+            pdf_size,
+            pdf_hash,
+            Json(data.get('regulations_json', {}))
+        ))
+        
+        self.conn.commit()
+        return self.cursor.fetchone()['id']
+    
+    def store_boundary_data(self, state_code: str, boundary_type: str, data: Dict):
+        """Store boundary data with shapefile/GeoJSON as BLOB"""
+        # Calculate hash for deduplication
+        file_hash = hashlib.sha256(data.get('file_content', b'')).hexdigest()
+        
+        # Check if already exists
+        self.cursor.execute(
+            "SELECT id FROM boundary_data WHERE state_code = %s AND boundary_type = %s AND file_hash = %s",
+            (state_code, boundary_type, file_hash)
+        )
+        existing = self.cursor.fetchone()
+        
+        if existing:
+            logger.info(f"Boundary data already exists for {state_code} {boundary_type}")
+            return existing['id']
+        
+        sql = """
+        INSERT INTO boundary_data (
+            state_code, boundary_type, boundary_name,
+            web_url, shapefile_url, shapefile_data, file_size_mb, file_hash,
+            geometry_json, properties_json, last_fetched, fetch_status
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), 'success')
+        RETURNING id
+        """
+        
+        file_size = len(data.get('file_content', b'')) / (1024 * 1024)
+        
+        self.cursor.execute(sql, (
+            state_code,
+            boundary_type,
+            data.get('boundary_name', f'{state_code}_{boundary_type}'),
+            data.get('web_url'),
+            data.get('shapefile_url'),
+            psycopg2.Binary(data.get('file_content', b'')),
+            file_size,
+            file_hash,
+            Json(data.get('geometry_json', {})),
+            Json(data.get('properties_json', {}))
+        ))
+        
+        self.conn.commit()
+        return self.cursor.fetchone()['id']
+
+
+class RegulationFetcher:
+    """Fetches hunting and fishing regulation data"""
+    
+    def __init__(self, db_manager: DatabaseManager):
+        self.db = db_manager
+        self.session = None
+    
+    async def fetch_state(self, state_code: str) -> Dict:
+        """Fetch regulation data for a specific state"""
+        logger.info(f"Fetching regulations for {state_code}")
+        
+        if state_code not in DATA_SOURCES['regulation_sources']:
+            logger.warning(f"No regulation source configured for {state_code}")
+            return {}
+        
+        source = DATA_SOURCES['regulation_sources'][state_code]
+        result = {
+            'state_code': state_code,
+            'web_url': source['web_url'],
+            'pdf_url': source['pdf_url']
+        }
+        
+        # Download PDF if available
+        if source['pdf_url']:
+            try:
+                async with self.session.get(source['pdf_url']) as response:
+                    if response.status == 200:
+                        result['pdf_content'] = await response.read()
+                        logger.info(f"Downloaded PDF for {state_code} ({len(result['pdf_content'])} bytes)")
+                    else:
+                        logger.warning(f"Failed to download PDF for {state_code}: {response.status}")
+            except Exception as e:
+                logger.error(f"Error downloading PDF for {state_code}: {e}")
+        
+        # Scrape web content if available
+        if source['web_url']:
+            try:
+                async with self.session.get(source['web_url']) as response:
+                    if response.status == 200:
+                        html = await response.text()
+                        result['regulations_json'] = self.parse_regulations(html, state_code)
+            except Exception as e:
+                logger.error(f"Error scraping web content for {state_code}: {e}")
+        
+        return result
+    
+    def parse_regulations(self, html: str, state_code: str) -> Dict:
+        """Parse regulation HTML content"""
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # Basic parsing - this would be customized per state
+        regulations = {
+            'state': state_code,
+            'last_updated': datetime.now().isoformat(),
+            'seasons': [],
+            'bag_limits': [],
+            'licenses': []
+        }
+        
+        # Extract relevant data (simplified - would need state-specific parsers)
+        # This is a placeholder for actual parsing logic
+        
+        return regulations
+    
+    async def fetch_all(self, states: List[str]) -> Dict[str, Dict]:
+        """Fetch regulations for multiple states"""
+        results = {}
+        
+        async with aiohttp.ClientSession() as session:
+            self.session = session
+            
+            tasks = [self.fetch_state(state) for state in states]
+            state_results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            for state, result in zip(states, state_results):
+                if isinstance(result, Exception):
+                    logger.error(f"Failed to fetch {state}: {result}")
+                    results[state] = {'error': str(result)}
+                else:
+                    results[state] = result
+                    
+                    # Store in database
+                    if result and 'pdf_content' in result:
+                        try:
+                            self.db.store_regulation_data(state, result)
+                            logger.info(f"Stored regulation data for {state}")
+                        except Exception as e:
+                            logger.error(f"Failed to store regulation data for {state}: {e}")
+        
+        return results
+
+
+class BoundaryFetcher:
+    """Fetches boundary data (counties, WMUs, WMAs)"""
+    
+    def __init__(self, db_manager: DatabaseManager):
+        self.db = db_manager
+        self.session = None
+    
+    async def fetch_counties(self, state_code: str) -> Dict:
+        """Fetch county boundary data"""
+        logger.info(f"Fetching county boundaries for {state_code}")
+        
+        # US Census Bureau TIGER/Line shapefiles
+        base_url = DATA_SOURCES['boundary_sources']['counties']['shapefile_base']
+        filename = f"tl_2023_{STATE_CODES[state_code.lower()]}_county.zip"
+        url = base_url + filename
+        
+        result = {
+            'state_code': state_code,
+            'boundary_type': 'county',
+            'shapefile_url': url
+        }
+        
+        try:
+            async with self.session.get(url) as response:
+                if response.status == 200:
+                    result['file_content'] = await response.read()
+                    logger.info(f"Downloaded county boundaries for {state_code}")
+                    
+                    # Process shapefile (simplified)
+                    result['geometry_json'] = self.process_shapefile(result['file_content'])
+        except Exception as e:
+            logger.error(f"Error downloading county boundaries for {state_code}: {e}")
+        
+        return result
+    
+    async def fetch_wmu(self, state_code: str) -> Dict:
+        """Fetch WMU/WMA boundary data"""
+        logger.info(f"Fetching WMU boundaries for {state_code}")
+        
+        if state_code not in DATA_SOURCES['boundary_sources']['states']:
+            logger.warning(f"No WMU source configured for {state_code}")
+            return {}
+        
+        source = DATA_SOURCES['boundary_sources']['states'][state_code]
+        result = {
+            'state_code': state_code,
+            'boundary_type': 'wmu',
+            'web_url': source.get('wmu_url'),
+            'shapefile_url': source.get('shapefile_url')
+        }
+        
+        if source.get('shapefile_url'):
+            try:
+                async with self.session.get(source['shapefile_url']) as response:
+                    if response.status == 200:
+                        result['file_content'] = await response.read()
+                        logger.info(f"Downloaded WMU boundaries for {state_code}")
+                        
+                        # Process based on format
+                        if source['format'] == 'geojson':
+                            result['geometry_json'] = json.loads(result['file_content'])
+                        else:
+                            result['geometry_json'] = self.process_shapefile(result['file_content'])
+            except Exception as e:
+                logger.error(f"Error downloading WMU boundaries for {state_code}: {e}")
+        
+        return result
+    
+    def process_shapefile(self, data: bytes) -> Dict:
+        """Process shapefile data to GeoJSON"""
+        # This is simplified - would need proper shapefile processing
+        # Using geopandas or similar
+        return {'type': 'FeatureCollection', 'features': []}
+    
+    async def fetch_all(self, states: List[str], boundary_type: str) -> Dict[str, Dict]:
+        """Fetch boundaries for multiple states"""
+        results = {}
+        
+        async with aiohttp.ClientSession() as session:
+            self.session = session
+            
+            tasks = []
+            for state in states:
+                if boundary_type in ['county', 'counties']:
+                    tasks.append(self.fetch_counties(state))
+                elif boundary_type in ['wmu', 'wma', 'boundary']:
+                    tasks.append(self.fetch_wmu(state))
+            
+            state_results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            for state, result in zip(states, state_results):
+                if isinstance(result, Exception):
+                    logger.error(f"Failed to fetch {state}: {result}")
+                    results[state] = {'error': str(result)}
+                else:
+                    results[state] = result
+                    
+                    # Store in database
+                    if result and 'file_content' in result:
+                        try:
+                            self.db.store_boundary_data(
+                                state, 
+                                result.get('boundary_type', boundary_type),
+                                result
+                            )
+                            logger.info(f"Stored boundary data for {state}")
+                        except Exception as e:
+                            logger.error(f"Failed to store boundary data for {state}: {e}")
+        
+        return results
+
+
+class APIUpdater:
+    """Updates backend API with latest data via PATCH endpoints"""
+    
+    def __init__(self):
+        self.api_base_url = os.getenv('API_BASE_URL', 'http://api.rodngun.us')
+        self.admin_api_key = os.getenv('ADMIN_API_KEY', 'your-secure-admin-key-here')
+        self.session = None
+    
+    async def update_regulation(self, state_code: str, data: Dict) -> bool:
+        """Update regulation data via API PATCH endpoint"""
+        url = f"{self.api_base_url}/api/data-management/regulations/{state_code}"
+        headers = {
+            'Authorization': f'Bearer {self.admin_api_key}',
+            'Content-Type': 'application/json'
+        }
+        
+        # Prepare update payload
+        payload = {
+            'state_code': state_code,
+            'regulation_year': data.get('regulation_year', datetime.now().year),
+            'regulation_type': data.get('regulation_type', 'combined'),
+            'pdf_url': data.get('pdf_url'),
+            'web_url': data.get('web_url'),
+            'species_categories': data.get('species_categories', []),
+            'seasons': data.get('seasons', []),
+            'bag_limits': data.get('bag_limits', {}),
+            'licenses': data.get('licenses', []),
+            'metadata': {
+                'source': 'data_manager',
+                'updated_at': datetime.utcnow().isoformat(),
+                'postgres_id': data.get('postgres_id')
+            }
+        }
+        
+        try:
+            async with self.session.patch(url, json=payload, headers=headers) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    logger.info(f"Updated regulation via API for {state_code}: {result['message']}")
+                    return True
+                else:
+                    error = await response.text()
+                    logger.error(f"API update failed for {state_code}: {response.status} - {error}")
+                    return False
+        except Exception as e:
+            logger.error(f"Error updating regulation via API for {state_code}: {e}")
+            return False
+    
+    async def update_boundary(self, state_code: str, boundary_type: str, data: Dict) -> bool:
+        """Update boundary data via API PATCH endpoint"""
+        url = f"{self.api_base_url}/api/data-management/boundaries/{state_code}"
+        headers = {
+            'Authorization': f'Bearer {self.admin_api_key}',
+            'Content-Type': 'application/json'
+        }
+        
+        # Prepare update payload
+        payload = {
+            'state_code': state_code,
+            'boundary_type': boundary_type,
+            'boundary_name': data.get('boundary_name', f'{state_code}_{boundary_type}'),
+            'geometry': data.get('geometry', {'type': 'FeatureCollection', 'features': []}),
+            'properties': data.get('properties', {}),
+            'shapefile_url': data.get('shapefile_url'),
+            'geojson_url': data.get('geojson_url'),
+            'area_sq_km': data.get('area_sq_km'),
+            'perimeter_km': data.get('perimeter_km'),
+            'metadata': {
+                'source': 'data_manager',
+                'updated_at': datetime.utcnow().isoformat(),
+                'postgres_id': data.get('postgres_id')
+            }
+        }
+        
+        try:
+            async with self.session.patch(url, json=payload, headers=headers) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    logger.info(f"Updated boundary via API for {state_code} {boundary_type}: {result['message']}")
+                    return True
+                else:
+                    error = await response.text()
+                    logger.error(f"API update failed for {state_code} {boundary_type}: {response.status} - {error}")
+                    return False
+        except Exception as e:
+            logger.error(f"Error updating boundary via API for {state_code} {boundary_type}: {e}")
+            return False
+    
+    async def bulk_update(self, updates: List[Dict], data_type: str) -> Dict[str, int]:
+        """Bulk update data via API"""
+        url = f"{self.api_base_url}/api/data-management/bulk-update"
+        headers = {
+            'Authorization': f'Bearer {self.admin_api_key}',
+            'Content-Type': 'application/json'
+        }
+        
+        payload = {
+            'data_type': data_type,
+            'updates': updates
+        }
+        
+        try:
+            async with self.session.post(url, json=payload, headers=headers) as response:
+                if response.status == 200:
+                    results = await response.json()
+                    success_count = sum(1 for r in results if r['success'])
+                    failed_count = len(results) - success_count
+                    logger.info(f"Bulk update completed: {success_count} success, {failed_count} failed")
+                    return {'success': success_count, 'failed': failed_count}
+                else:
+                    error = await response.text()
+                    logger.error(f"Bulk update failed: {response.status} - {error}")
+                    return {'success': 0, 'failed': len(updates)}
+        except Exception as e:
+            logger.error(f"Error in bulk update: {e}")
+            return {'success': 0, 'failed': len(updates)}
+    
+    async def update_from_postgres(self, db_manager: DatabaseManager, states: List[str], data_type: str):
+        """Update API with data from PostgreSQL"""
+        async with aiohttp.ClientSession() as session:
+            self.session = session
+            
+            if data_type in ['regulation', 'both']:
+                # Get latest regulations from PostgreSQL
+                for state in states:
+                    db_manager.cursor.execute("""
+                        SELECT state_code, regulation_year, regulations_json, pdf_url, web_url, id
+                        FROM regulation_data
+                        WHERE state_code = %s AND fetch_status = 'success'
+                        ORDER BY regulation_year DESC, last_fetched DESC
+                        LIMIT 1
+                    """, (state,))
+                    
+                    reg_data = db_manager.cursor.fetchone()
+                    if reg_data:
+                        update_data = {
+                            'regulation_year': reg_data['regulation_year'],
+                            'pdf_url': reg_data['pdf_url'],
+                            'web_url': reg_data['web_url'],
+                            'postgres_id': str(reg_data['id'])
+                        }
+                        
+                        # Merge with parsed JSON if available
+                        if reg_data['regulations_json']:
+                            update_data.update(reg_data['regulations_json'])
+                        
+                        await self.update_regulation(state, update_data)
+            
+            if data_type in ['boundary', 'both']:
+                # Get latest boundaries from PostgreSQL
+                for state in states:
+                    # Get WMU boundaries
+                    db_manager.cursor.execute("""
+                        SELECT state_code, boundary_type, geometry_json, properties_json, 
+                               shapefile_url, area_sq_km, perimeter_km, id
+                        FROM boundary_data
+                        WHERE state_code = %s AND boundary_type = 'wmu' AND fetch_status = 'success'
+                        ORDER BY last_fetched DESC
+                        LIMIT 1
+                    """, (state,))
+                    
+                    boundary_data = db_manager.cursor.fetchone()
+                    if boundary_data:
+                        update_data = {
+                            'geometry': boundary_data['geometry_json'] or {'type': 'FeatureCollection', 'features': []},
+                            'properties': boundary_data['properties_json'] or {},
+                            'shapefile_url': boundary_data['shapefile_url'],
+                            'area_sq_km': float(boundary_data['area_sq_km']) if boundary_data['area_sq_km'] else None,
+                            'perimeter_km': float(boundary_data['perimeter_km']) if boundary_data['perimeter_km'] else None,
+                            'postgres_id': str(boundary_data['id'])
+                        }
+                        
+                        await self.update_boundary(state, 'wmu', update_data)
+                    
+                    # Get county boundaries
+                    db_manager.cursor.execute("""
+                        SELECT state_code, boundary_type, geometry_json, properties_json,
+                               shapefile_url, id
+                        FROM boundary_data
+                        WHERE state_code = %s AND boundary_type = 'county' AND fetch_status = 'success'
+                        ORDER BY last_fetched DESC
+                        LIMIT 1
+                    """, (state,))
+                    
+                    county_data = db_manager.cursor.fetchone()
+                    if county_data:
+                        update_data = {
+                            'geometry': county_data['geometry_json'] or {'type': 'FeatureCollection', 'features': []},
+                            'properties': county_data['properties_json'] or {},
+                            'shapefile_url': county_data['shapefile_url'],
+                            'postgres_id': str(county_data['id'])
+                        }
+                        
+                        await self.update_boundary(state, 'county', update_data)
+
+
+class MongoDBUpdater:
+    """Updates MongoDB with latest data from PostgreSQL"""
+    
+    def __init__(self, db_manager: DatabaseManager):
+        self.db = db_manager
+        self.mongo_client = None
+        self.mongo_db = None
+    
+    def connect_mongodb(self):
+        """Connect to local MongoDB"""
+        try:
+            self.mongo_client = pymongo.MongoClient('localhost', 27017)
+            self.mongo_db = self.mongo_client['rodngun']
+            logger.info("Connected to MongoDB")
+        except Exception as e:
+            logger.error(f"MongoDB connection failed: {e}")
+    
+    def update_from_postgres(self):
+        """Update MongoDB with latest data from PostgreSQL"""
+        if not self.mongo_db:
+            self.connect_mongodb()
+        
+        # Get latest regulations from PostgreSQL
+        self.db.cursor.execute("""
+            SELECT state_code, regulation_year, regulations_json, last_fetched
+            FROM v_latest_regulations
+        """)
+        regulations = self.db.cursor.fetchall()
+        
+        # Update MongoDB regulations collection
+        for reg in regulations:
+            self.mongo_db.regulations.replace_one(
+                {'state_code': reg['state_code']},
+                {
+                    'state_code': reg['state_code'],
+                    'year': reg['regulation_year'],
+                    'data': reg['regulations_json'],
+                    'last_updated': reg['last_fetched']
+                },
+                upsert=True
+            )
+        
+        logger.info(f"Updated {len(regulations)} regulation records in MongoDB")
+        
+        # Get latest boundaries from PostgreSQL
+        self.db.cursor.execute("""
+            SELECT state_code, boundary_type, geometry_json, last_fetched
+            FROM v_latest_boundaries
+        """)
+        boundaries = self.db.cursor.fetchall()
+        
+        # Update MongoDB boundaries collection
+        for boundary in boundaries:
+            self.mongo_db.boundaries.replace_one(
+                {'state_code': boundary['state_code'], 'type': boundary['boundary_type']},
+                {
+                    'state_code': boundary['state_code'],
+                    'type': boundary['boundary_type'],
+                    'geometry': boundary['geometry_json'],
+                    'last_updated': boundary['last_fetched']
+                },
+                upsert=True
+            )
+        
+        logger.info(f"Updated {len(boundaries)} boundary records in MongoDB")
+    
+    def create_backup(self):
+        """Create MongoDB BSON backup"""
+        backup_script = SCRIPT_DIR / 'create_local_mongodb_backup.sh'
+        
+        if backup_script.exists():
+            try:
+                result = subprocess.run(
+                    ['bash', str(backup_script)],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    logger.info("MongoDB backup created successfully")
+                else:
+                    logger.error(f"Backup failed: {result.stderr}")
+            except Exception as e:
+                logger.error(f"Failed to create backup: {e}")
+
+
+def parse_state_arg(state_arg: str) -> List[str]:
+    """Parse state argument and return list of state codes"""
+    if state_arg.lower() == 'all':
+        return list(DATA_SOURCES['regulation_sources'].keys())
+    
+    # Handle full state name or abbreviation
+    state_lower = state_arg.lower().replace(' ', '_')
+    if state_lower in STATE_CODES:
+        return [STATE_CODES[state_lower]]
+    elif state_arg.upper() in DATA_SOURCES['regulation_sources']:
+        return [state_arg.upper()]
+    else:
+        raise ValueError(f"Unknown state: {state_arg}")
+
+
+async def main():
+    """Main execution function"""
+    parser = argparse.ArgumentParser(
+        description='RodNGun Data Management - Fetch and update regulation/boundary data'
+    )
+    parser.add_argument(
+        'state',
+        help='State name, abbreviation, or "all" for all states'
+    )
+    parser.add_argument(
+        'command',
+        choices=['regulation', 'boundary', 'both'],
+        help='Type of data to fetch'
+    )
+    parser.add_argument(
+        '--init-db',
+        action='store_true',
+        help='Initialize database schema'
+    )
+    parser.add_argument(
+        '--skip-mongodb',
+        action='store_true',
+        help='Skip MongoDB update'
+    )
+    parser.add_argument(
+        '--skip-backup',
+        action='store_true',
+        help='Skip MongoDB backup creation'
+    )
+    parser.add_argument(
+        '--update-api',
+        action='store_true',
+        help='Update API via PATCH endpoints after fetching'
+    )
+    parser.add_argument(
+        '--api-only',
+        action='store_true',
+        help='Only update API from existing PostgreSQL data (skip fetching)'
+    )
+    
+    args = parser.parse_args()
+    
+    # Parse states
+    try:
+        states = parse_state_arg(args.state)
+    except ValueError as e:
+        logger.error(e)
+        sys.exit(1)
+    
+    logger.info(f"Processing {len(states)} state(s) for {args.command} data")
+    
+    # Initialize database
+    db_manager = DatabaseManager()
+    db_manager.connect()
+    
+    if args.init_db:
+        db_manager.init_database()
+    
+    # Create update log
+    log_id = db_manager.create_update_log(
+        args.state if args.state != 'all' else None,
+        args.command
+    )
+    
+    try:
+        # Skip fetching if api-only mode
+        if not args.api_only:
+            # Fetch regulation data
+            if args.command in ['regulation', 'both']:
+                reg_fetcher = RegulationFetcher(db_manager)
+                reg_results = await reg_fetcher.fetch_all(states)
+                
+                success_count = sum(1 for r in reg_results.values() if 'error' not in r)
+                db_manager.update_log(log_id, records_processed=len(states), records_added=success_count)
+            
+            # Fetch boundary data
+            if args.command in ['boundary', 'both']:
+                bound_fetcher = BoundaryFetcher(db_manager)
+                
+                # Fetch counties
+                county_results = await bound_fetcher.fetch_all(states, 'county')
+                
+                # Fetch WMUs
+                wmu_results = await bound_fetcher.fetch_all(states, 'wmu')
+                
+                total_processed = len(states) * 2  # Counties + WMUs
+                success_count = sum(1 for r in county_results.values() if 'error' not in r)
+                success_count += sum(1 for r in wmu_results.values() if 'error' not in r)
+                
+                db_manager.update_log(log_id, records_processed=total_processed, records_updated=success_count)
+            
+            # Update MongoDB
+            if not args.skip_mongodb:
+                logger.info("Updating MongoDB with latest data")
+                mongo_updater = MongoDBUpdater(db_manager)
+                mongo_updater.update_from_postgres()
+                
+                # Create backup
+                if not args.skip_backup:
+                    mongo_updater.create_backup()
+        
+        # Update API via PATCH endpoints
+        if args.update_api or args.api_only:
+            # Check if RODNGUN environment variable is set to 1
+            if os.getenv('RODNGUN') != '1':
+                logger.warning("API updates are disabled. Set RODNGUN=1 to enable API updates.")
+                logger.info("Skipping API update (RODNGUN env not set to 1)")
+            else:
+                logger.info("Updating API via PATCH endpoints")
+                api_updater = APIUpdater()
+                await api_updater.update_from_postgres(db_manager, states, args.command)
+                logger.info("API update completed")
+        
+        # Mark log as complete
+        db_manager.update_log(
+            log_id,
+            completed_at=datetime.now(),
+            status='success'
+        )
+        
+        logger.info("Data update completed successfully")
+        
+    except Exception as e:
+        logger.error(f"Update failed: {e}")
+        db_manager.update_log(
+            log_id,
+            completed_at=datetime.now(),
+            status='failed',
+            error_messages=[str(e)]
+        )
+        sys.exit(1)
+    
+    finally:
+        db_manager.close()
+
+
+if __name__ == '__main__':
+    asyncio.run(main())

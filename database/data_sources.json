@@ -1,0 +1,449 @@
+{
+  "regulation_sources": {
+    "AL": {
+      "name": "Alabama DCNR",
+      "web_url": "https://www.outdooralabama.com/licenses/hunting-fishing-regulations",
+      "pdf_url": "https://www.outdooralabama.com/sites/default/files/hunting/2024-25_Hunting_Digest.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "AK": {
+      "name": "Alaska DFG",
+      "web_url": "https://www.adfg.alaska.gov/index.cfm?adfg=regulations.main",
+      "pdf_url": "https://www.adfg.alaska.gov/static/regulations/regprocess/pdfs/2024-2025_hunting_regs.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "AZ": {
+      "name": "Arizona Game and Fish",
+      "web_url": "https://www.azgfd.com/hunting/regulations/",
+      "pdf_url": "https://s3.amazonaws.com/azgfd-portal/hunting/regulations/HuntingRegulations.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "AR": {
+      "name": "Arkansas GFC",
+      "web_url": "https://www.agfc.com/en/hunting/regulations/",
+      "pdf_url": "https://www.agfc.com/hunting/regulations/AGFC_Hunting_Guidebook.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "CA": {
+      "name": "California DFW",
+      "web_url": "https://wildlife.ca.gov/Regulations",
+      "pdf_url": "https://nrm.dfg.ca.gov/FileHandler.ashx?DocumentID=hunting_regs.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "CO": {
+      "name": "Colorado Parks and Wildlife",
+      "web_url": "https://cpw.state.co.us/regulations",
+      "pdf_url": "https://cpw.state.co.us/Documents/RulesRegs/Brochures/BigGame/biggame.pdf",
+      "api_url": "https://cpw.state.co.us/api/v1/regulations",
+      "update_frequency": "annually"
+    },
+    "CT": {
+      "name": "Connecticut DEEP",
+      "web_url": "https://portal.ct.gov/DEEP/Hunting/Hunting-and-Trapping-Regulations",
+      "pdf_url": "https://portal.ct.gov/-/media/DEEP/hunting_fishing/2024_CT_Hunting_Guide.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "DE": {
+      "name": "Delaware DNREC",
+      "web_url": "https://dnrec.delaware.gov/fish-wildlife/hunting/regulations/",
+      "pdf_url": "https://dnrec.delaware.gov/fw/hunting/regulations/hunting-guide.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "FL": {
+      "name": "Florida FWC",
+      "web_url": "https://myfwc.com/hunting/regulations/",
+      "pdf_url": "https://myfwc.com/media/hunting-regulations.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "GA": {
+      "name": "Georgia DNR",
+      "web_url": "https://georgiawildlife.com/hunting/regulations",
+      "pdf_url": "https://georgiawildlife.com/sites/default/files/hunting_regulations.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "HI": {
+      "name": "Hawaii DLNR",
+      "web_url": "https://dlnr.hawaii.gov/recreation/hunting/",
+      "pdf_url": "https://dlnr.hawaii.gov/recreation/files/hunting-rules.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "ID": {
+      "name": "Idaho Fish and Game",
+      "web_url": "https://idfg.idaho.gov/rules",
+      "pdf_url": "https://idfg.idaho.gov/sites/default/files/seasons-rules-big-game.pdf",
+      "api_url": "https://idfg.idaho.gov/ifwis/api/",
+      "update_frequency": "annually"
+    },
+    "IL": {
+      "name": "Illinois DNR",
+      "web_url": "https://www.dnr.illinois.gov/hunting/regulations.html",
+      "pdf_url": "https://www.dnr.illinois.gov/hunting/Documents/HuntingDigest.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "IN": {
+      "name": "Indiana DNR",
+      "web_url": "https://www.in.gov/dnr/fish-and-wildlife/hunting-and-trapping/",
+      "pdf_url": "https://www.in.gov/dnr/fish-and-wildlife/files/hunting-guide.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "IA": {
+      "name": "Iowa DNR",
+      "web_url": "https://www.iowadnr.gov/hunting/hunting-regulations",
+      "pdf_url": "https://www.iowadnr.gov/Portals/idnr/hunting-regs.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "KS": {
+      "name": "Kansas Wildlife and Parks",
+      "web_url": "https://ksoutdoors.com/Hunting/Hunting-Regulations",
+      "pdf_url": "https://ksoutdoors.com/content/download/hunting-regulations.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "KY": {
+      "name": "Kentucky DFW",
+      "web_url": "https://fw.ky.gov/Hunt/Pages/Hunting-Regulations.aspx",
+      "pdf_url": "https://fw.ky.gov/Hunt/Documents/KYHuntingGuide.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "LA": {
+      "name": "Louisiana Wildlife and Fisheries",
+      "web_url": "https://www.wlf.louisiana.gov/page/hunting-regulations",
+      "pdf_url": "https://www.wlf.louisiana.gov/assets/Resources/Publications/Hunting_Regulations.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "ME": {
+      "name": "Maine DIF&W",
+      "web_url": "https://www.maine.gov/ifw/hunting-trapping/hunting-laws/",
+      "pdf_url": "https://www.maine.gov/ifw/docs/hunting-law-book.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "MD": {
+      "name": "Maryland DNR",
+      "web_url": "https://dnr.maryland.gov/huntersguide/Pages/default.aspx",
+      "pdf_url": "https://dnr.maryland.gov/huntersguide/Documents/HuntingGuide.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "MA": {
+      "name": "Massachusetts DFW",
+      "web_url": "https://www.mass.gov/hunting-regulations",
+      "pdf_url": "https://www.mass.gov/doc/hunting-regulations/download",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "MI": {
+      "name": "Michigan DNR",
+      "web_url": "https://www.michigan.gov/dnr/0,4570,7-350-79136_79772---,00.html",
+      "pdf_url": "https://www.michigan.gov/dnr/hunting-digest.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "MN": {
+      "name": "Minnesota DNR",
+      "web_url": "https://www.dnr.state.mn.us/hunting/regulations.html",
+      "pdf_url": "https://files.dnr.state.mn.us/rlp/regulations/hunting/hunting.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "MS": {
+      "name": "Mississippi DWF&P",
+      "web_url": "https://www.mdwfp.com/hunting/regulations/",
+      "pdf_url": "https://www.mdwfp.com/media/hunting-digest.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "MO": {
+      "name": "Missouri Conservation",
+      "web_url": "https://mdc.mo.gov/hunting-trapping/regulations",
+      "pdf_url": "https://mdc.mo.gov/sites/default/files/downloads/Fall-Deer-Turkey-Booklet.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "MT": {
+      "name": "Montana FWP",
+      "web_url": "https://fwp.mt.gov/hunt/regulations",
+      "pdf_url": "https://fwp.mt.gov/binaries/content/assets/fwp/hunt/regulations/2024/2024-deer-elk-regs.pdf",
+      "api_url": "https://fwp.mt.gov/api/huntregulations",
+      "update_frequency": "annually"
+    },
+    "NE": {
+      "name": "Nebraska Game and Parks",
+      "web_url": "https://outdoornebraska.gov/regulations/",
+      "pdf_url": "https://outdoornebraska.gov/wp-content/uploads/BigGameGuide.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "NV": {
+      "name": "Nevada DOW",
+      "web_url": "https://www.ndow.org/hunt/regulations/",
+      "pdf_url": "https://www.ndow.org/wp-content/uploads/hunt-regulations.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "NH": {
+      "name": "New Hampshire F&G",
+      "web_url": "https://www.wildlife.state.nh.us/hunting/regulations.html",
+      "pdf_url": "https://www.wildlife.state.nh.us/hunting/documents/hunt-digest.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "NJ": {
+      "name": "New Jersey DFW",
+      "web_url": "https://www.nj.gov/dep/fgw/hunting.htm",
+      "pdf_url": "https://www.nj.gov/dep/fgw/pdf/hunt_digest.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "NM": {
+      "name": "New Mexico DGF",
+      "web_url": "https://www.wildlife.state.nm.us/hunting/",
+      "pdf_url": "https://www.wildlife.state.nm.us/download/publications/rib/2024-25-Hunting-Rules-Info.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "NY": {
+      "name": "New York DEC",
+      "web_url": "https://www.dec.ny.gov/outdoor/hunting.html",
+      "pdf_url": "https://www.dec.ny.gov/docs/wildlife_pdf/huntguide.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "NC": {
+      "name": "North Carolina WRC",
+      "web_url": "https://www.ncwildlife.org/Hunting/Regulations",
+      "pdf_url": "https://www.ncwildlife.org/Portals/0/Regs/hunting-regulations.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "ND": {
+      "name": "North Dakota GFD",
+      "web_url": "https://gf.nd.gov/regulations",
+      "pdf_url": "https://gf.nd.gov/sites/default/files/publications/hunting-guide.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "OH": {
+      "name": "Ohio DNR",
+      "web_url": "https://ohiodnr.gov/hunting-regulations",
+      "pdf_url": "https://ohiodnr.gov/static/documents/wildlife/hunting-regulations.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "OK": {
+      "name": "Oklahoma DWC",
+      "web_url": "https://www.wildlifedepartment.com/hunting/regulations",
+      "pdf_url": "https://www.wildlifedepartment.com/sites/default/files/Hunting%20Guide.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "OR": {
+      "name": "Oregon DFW",
+      "web_url": "https://www.dfw.state.or.us/resources/hunting/",
+      "pdf_url": "https://www.dfw.state.or.us/resources/hunting/big_game/regulations/docs/BigGame.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "PA": {
+      "name": "Pennsylvania Game Commission",
+      "web_url": "https://www.pgc.pa.gov/HuntingTrapping/Regulations/",
+      "pdf_url": "https://www.pgc.pa.gov/HuntingTrapping/Documents/Hunting_Digest.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "RI": {
+      "name": "Rhode Island DEM",
+      "web_url": "http://www.dem.ri.gov/programs/fish-wildlife/hunting-regulations.php",
+      "pdf_url": "http://www.dem.ri.gov/programs/fish-wildlife/documents/hunting-abstract.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "SC": {
+      "name": "South Carolina DNR",
+      "web_url": "https://www.dnr.sc.gov/hunting/regulations.html",
+      "pdf_url": "https://www.dnr.sc.gov/regulations/pdf/huntingregs.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "SD": {
+      "name": "South Dakota GFP",
+      "web_url": "https://gfp.sd.gov/hunting/",
+      "pdf_url": "https://gfp.sd.gov/userdocs/docs/hunting-handbook.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "TN": {
+      "name": "Tennessee WRA",
+      "web_url": "https://www.tn.gov/twra/hunting/regulations.html",
+      "pdf_url": "https://www.tn.gov/content/dam/tn/twra/documents/hunting-guide.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "TX": {
+      "name": "Texas Parks and Wildlife",
+      "web_url": "https://tpwd.texas.gov/regulations/outdoor-annual/hunting/",
+      "pdf_url": "https://tpwd.texas.gov/regulations/outdoor-annual/pdfs/hunting.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "UT": {
+      "name": "Utah DWR",
+      "web_url": "https://wildlife.utah.gov/hunting/hunting-regulation.html",
+      "pdf_url": "https://wildlife.utah.gov/guidebooks/2024_pdfs/2024_biggame.pdf",
+      "api_url": "https://wildlife.utah.gov/api/regulations",
+      "update_frequency": "annually"
+    },
+    "VT": {
+      "name": "Vermont F&W",
+      "web_url": "https://vtfishandwildlife.com/hunt/regulations",
+      "pdf_url": "https://vtfishandwildlife.com/sites/fishandwildlife/files/documents/hunting-digest.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "VA": {
+      "name": "Virginia DWR",
+      "web_url": "https://dwr.virginia.gov/hunting/regulations/",
+      "pdf_url": "https://dwr.virginia.gov/wp-content/uploads/hunting-regulations.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "WA": {
+      "name": "Washington DFW",
+      "web_url": "https://wdfw.wa.gov/hunting/regulations",
+      "pdf_url": "https://wdfw.wa.gov/sites/default/files/publications/big-game-hunting-regs.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "WV": {
+      "name": "West Virginia DNR",
+      "web_url": "https://wvdnr.gov/hunting-regulations/",
+      "pdf_url": "https://wvdnr.gov/wp-content/uploads/hunting-regs.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "WI": {
+      "name": "Wisconsin DNR",
+      "web_url": "https://dnr.wisconsin.gov/topic/hunting/regulations",
+      "pdf_url": "https://dnr.wi.gov/files/PDF/pubs/wm/hunting-regulations.pdf",
+      "api_url": null,
+      "update_frequency": "annually"
+    },
+    "WY": {
+      "name": "Wyoming GFD",
+      "web_url": "https://wgfd.wyo.gov/Regulations",
+      "pdf_url": "https://wgfd.wyo.gov/WGFD/media/content/Regulations.pdf",
+      "api_url": "https://wgfd.wyo.gov/api/regulations",
+      "update_frequency": "annually"
+    }
+  },
+  "boundary_sources": {
+    "counties": {
+      "source": "US Census Bureau",
+      "url": "https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html",
+      "shapefile_base": "https://www2.census.gov/geo/tiger/TIGER2023/COUNTY/",
+      "format": "shapefile",
+      "update_frequency": "annually"
+    },
+    "states": {
+      "AL": {
+        "wmu_source": "Alabama DCNR GIS",
+        "wmu_url": "https://www.outdooralabama.com/hunting/wildlife-management-areas",
+        "shapefile_url": "https://aldcnr.maps.arcgis.com/sharing/rest/content/items/wma_boundaries/data",
+        "format": "shapefile"
+      },
+      "AK": {
+        "wmu_source": "Alaska DFG GIS",
+        "wmu_url": "https://www.adfg.alaska.gov/index.cfm?adfg=huntingmaps.gmu",
+        "shapefile_url": "https://www.adfg.alaska.gov/static/hunting/unitmaps/pdfs/gmu_boundaries.zip",
+        "format": "shapefile"
+      },
+      "AZ": {
+        "wmu_source": "Arizona GFD GIS",
+        "wmu_url": "https://www.azgfd.com/hunting/units/",
+        "shapefile_url": "https://opendata.azgfd.com/datasets/hunting-units/explore",
+        "format": "geojson"
+      },
+      "AR": {
+        "wmu_source": "Arkansas GFC GIS",
+        "wmu_url": "https://www.agfc.com/en/hunting/wma/",
+        "shapefile_url": "https://gis.agfc.com/arcgis/rest/services/WMA/MapServer",
+        "format": "rest_api"
+      },
+      "CA": {
+        "wmu_source": "California DFW GIS",
+        "wmu_url": "https://wildlife.ca.gov/Data/GIS",
+        "shapefile_url": "https://apps.wildlife.ca.gov/lands/data/download/hunt_zones.zip",
+        "format": "shapefile"
+      },
+      "CO": {
+        "wmu_source": "Colorado CPW GIS",
+        "wmu_url": "https://cpw.state.co.us/learn/Pages/KMZ-Maps.aspx",
+        "shapefile_url": "https://opendata.cpw.state.co.us/datasets/cpw-game-management-units",
+        "format": "geojson"
+      },
+      "ID": {
+        "wmu_source": "Idaho Fish and Game GIS",
+        "wmu_url": "https://idfg.idaho.gov/data",
+        "shapefile_url": "https://idfg.idaho.gov/ifwis/maps/realtime/gmu/gmu_boundaries.zip",
+        "format": "shapefile"
+      },
+      "MT": {
+        "wmu_source": "Montana FWP GIS",
+        "wmu_url": "http://fwp.mt.gov/gis/maps/huntingDistricts/",
+        "shapefile_url": "https://gis-fwp.opendata.arcgis.com/datasets/hunting-districts",
+        "format": "geojson"
+      },
+      "NM": {
+        "wmu_source": "New Mexico DGF GIS",
+        "wmu_url": "https://www.wildlife.state.nm.us/hunting/maps/",
+        "shapefile_url": "https://nmdgf.maps.arcgis.com/sharing/rest/content/items/gmu_boundaries/data",
+        "format": "shapefile"
+      },
+      "OR": {
+        "wmu_source": "Oregon DFW GIS",
+        "wmu_url": "https://www.dfw.state.or.us/maps/hunting/",
+        "shapefile_url": "https://nrimp.dfw.state.or.us/web/DataClearinghouse/Download/wildlife_mgmt_units.zip",
+        "format": "shapefile"
+      },
+      "TX": {
+        "wmu_source": "Texas PWD GIS",
+        "wmu_url": "https://tpwd.texas.gov/gis/",
+        "shapefile_url": "https://tpwd.texas.gov/gis/data/resource_management_units.zip",
+        "format": "shapefile"
+      },
+      "UT": {
+        "wmu_source": "Utah DWR GIS",
+        "wmu_url": "https://wildlife.utah.gov/hunting/main-hunting-page/big-game/unit-maps.html",
+        "shapefile_url": "https://dwrapps.utah.gov/huntboundaries/data/big_game_units.zip",
+        "format": "shapefile"
+      },
+      "WA": {
+        "wmu_source": "Washington DFW GIS",
+        "wmu_url": "https://wdfw.wa.gov/hunting/locations/gmu-maps",
+        "shapefile_url": "https://data.wdfw.wa.gov/datasets/game-management-units",
+        "format": "geojson"
+      },
+      "WY": {
+        "wmu_source": "Wyoming GFD GIS",
+        "wmu_url": "https://wgfd.wyo.gov/Hunting/Hunt-Area-Maps",
+        "shapefile_url": "https://wgfd.maps.arcgis.com/sharing/rest/content/items/hunt_areas/data",
+        "format": "shapefile"
+      }
+    }
+  }
+}
