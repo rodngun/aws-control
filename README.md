@@ -11,11 +11,6 @@ This repository contains AWS infrastructure management and data operation script
 - `restore_eks_cluster.sh` - Restore paused EKS cluster
 - `rodngun-cloud` - Main cloud infrastructure management CLI
 
-### Data Management
-- `rodngun-data` - Data operations CLI tool
-- `setup_data_manager.sh` - Setup script for data management environment
-- `DATA_MANAGER_README.md` - Detailed documentation for data management
-
 ### Database Operations
 - `database/` - Database migration and management scripts
 - `create_local_mongodb_backup.sh` - Create local MongoDB backups
@@ -42,12 +37,7 @@ This repository contains AWS infrastructure management and data operation script
 
 ## Configuration
 
-Copy `.env.template` to `.env` and configure:
-```bash
-cp .env.template .env
-```
-
-Edit `.env` with your AWS and database configuration.
+Create a `.env` file with your AWS and database configuration as needed.
 
 ## Usage
 
@@ -66,13 +56,6 @@ Pause cluster (save costs when not in use):
 Restore cluster:
 ```bash
 ./restore_eks_cluster.sh
-```
-
-### Data Operations
-
-Use the rodngun-data CLI:
-```bash
-./rodngun-data --help
 ```
 
 ### Cloud Infrastructure

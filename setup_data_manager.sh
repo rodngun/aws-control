@@ -186,7 +186,6 @@ else
 fi
 
 # Step 6: Make scripts executable
-chmod +x "$SCRIPT_DIR/rodngun-data"
 chmod +x "$SCRIPT_DIR/rodngun-cloud"
 chmod +x "$SCRIPT_DIR/create_local_mongodb_backup.sh"
 
@@ -271,15 +270,6 @@ echo "To use the data manager:"
 echo ""
 echo "  # Activate virtual environment"
 echo "  source $SCRIPT_DIR/venv/bin/activate"
-echo ""
-echo "  # Fetch regulation data for a state"
-echo "  $SCRIPT_DIR/rodngun-data colorado regulation"
-echo ""
-echo "  # Fetch boundary data for all states"
-echo "  $SCRIPT_DIR/rodngun-data all boundary"
-echo ""
-echo "  # Fetch both regulation and boundary data"
-echo "  $SCRIPT_DIR/rodngun-data texas both"
 echo ""
 echo "To connect to PostgreSQL:"
 echo "  psql -U $DB_USER -d $DB_NAME"
